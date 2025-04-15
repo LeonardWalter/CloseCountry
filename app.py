@@ -9,7 +9,6 @@ import re
 
 
 from flask import Flask, render_template, jsonify, request, session, g
-from werkzeug.middleware.proxy_fix import ProxyFix
 from shapely.ops import unary_union, nearest_points
 from shapely.geometry import LineString, mapping
 from pyproj import Geod
@@ -25,7 +24,6 @@ DISTANCES_DATA_FILE = 'distances.jsonl'
 GEOJSON_SHAPES_FILE = 'test.geo.json'
 COUNTRY_CODES_FILE = 'country_codes.json'
 HIGHSCORE_FILE = 'closer_country_highscore.txt'
-SECRET_KEY = 'MC4CAQAwBQYDK2VuBCIEIKN92XnvKX4YfGuwwhJ4XBzqFyQMfXRM7/9KdEMqZcAo'
 SHAPES_NAME_COLUMN = 'name_en'
 SHAPES_CODE_COLUMN = 'iso_a2'
 SHAPES_TYPE_COLUMN = 'type'
@@ -38,7 +36,6 @@ app.secret_key = os.environ.get('SECRET_KEY')
 if not app.secret_key:
      app.logger.critical("FATAL: SECRET_KEY environment variable not set!")
 # app.logger.setLevel(logging.DEBUG)
-app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 
 # --- Global Data Storage ---
 distances_data: Optional[Dict[FrozenSet[str], float]] = None
