@@ -14,6 +14,9 @@ from shapely.ops import unary_union, nearest_points
 from shapely.geometry import LineString, mapping
 from pyproj import Geod
 from typing import Dict, Optional, List, Set, FrozenSet
+from dotenv import load_dotenv
+
+
 
 # --- Configuration & Constants ---
 DATABASE_FILE = 'highscores.db'
@@ -29,8 +32,11 @@ SHAPES_TYPE_COLUMN = 'type'
 VALID_TYPES = ["Country", "Sovereign country"]
 GEOMETRY_SIMPLIFY_TOLERANCE = 0.05
 
+load_dotenv()
 app = Flask(__name__)
-app.secret_key = SECRET_KEY
+app.secret_key = os.environ.get('SECRET_KEY') 
+if not app.secret_key:
+     app.logger.critical("FATAL: SECRET_KEY environment variable not set!")
 # app.logger.setLevel(logging.DEBUG)
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 
