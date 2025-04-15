@@ -1,0 +1,487 @@
+:root {
+    /* Light Mode Colors (Default) */
+    --bg-color: #f0f2f5;
+    --container-bg: #ffffff;
+    --text-color: #333333;
+    --text-muted-color: #666;
+    --border-color: #e0e0e0;
+    --button-bg: #f8f9fa;
+    --button-hover-bg: #e9ecef;
+    --button-border: #ced4da;
+    --accent-color: #007bff;
+    --accent-hover-color: #0056b3;
+    --correct-color: #28a745;
+    --incorrect-color: #dc3545;
+    --shadow-color: rgba(0, 0, 0, 0.08);
+    --font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+}
+
+body {
+    font-family: var(--font-family);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin: 0;
+    padding: 20px;
+    min-height: 100vh;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    line-height: 1.6;
+}
+
+body.dark-mode {
+    --bg-color: #1a1a1a;
+    --container-bg: #2c2c2c;
+    --text-color: #e0e0e0;
+    --text-muted-color: #aaaaaa;
+    --border-color: #444444;
+    --button-bg: #3a3a3a;
+    --button-hover-bg: #484848;
+    --button-border: #555555;
+    --accent-color: #0d6efd;
+    --accent-hover-color: #338dff;
+    --correct-color: #34c759;
+    --incorrect-color: #ff453a;
+    --shadow-color: rgba(0, 0, 0, 0.3);
+}
+
+/* Specific Dark Mode Overrides */
+body.dark-mode .flag-img {
+    opacity: 0.9;
+    border-color: var(--border-color);
+}
+body.dark-mode .leaflet-popup-content-wrapper,
+body.dark-mode .leaflet-popup-tip {
+    background: var(--container-bg);
+    color: var(--text-color);
+    box-shadow: 0 3px 14px var(--shadow-color);
+}
+body.dark-mode .leaflet-popup-close-button { color: var(--text-muted-color); }
+body.dark-mode .leaflet-popup-close-button:hover { color: var(--text-color); }
+/* Add any other specific dark mode element styles here prefixed with body.dark-mode */
+body.dark-mode #score-board {
+     box-shadow: 0 1px 3px var(--shadow-color); /* Adjust shadow if needed */
+}
+body.dark-mode #theme-toggle { /* Dark mode toggle button style */
+    background-color: var(--button-bg);
+    color: var(--text-color);
+    border-color: var(--button-border);
+}
+body.dark-mode #theme-toggle:hover {
+     background-color: var(--button-hover-bg);
+}
+
+/* --- Base Setup --- */
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
+#theme-toggle {
+    position: fixed; /* Keep it fixed in the corner */
+    top: 15px;
+    right: 15px;
+    z-index: 1000; /* Ensure it's above other content */
+    background-color: var(--button-bg);
+    color: var(--text-color);
+    border: 1px solid var(--button-border);
+    border-radius: 50%; /* Make it round */
+    width: 40px;
+    height: 40px;
+    font-size: 1.2em; /* Adjust icon size */
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 0; /* Remove padding if using icons */
+    box-shadow: 0 1px 4px var(--shadow-color);
+    transition: background-color 0.2s ease, transform 0.1s ease;
+}
+#theme-toggle:hover {
+    background-color: var(--button-hover-bg);
+}
+#theme-toggle:active {
+    transform: scale(0.95);
+}
+
+h1 {
+    color: var(--text-color);
+    margin-bottom: 1rem;
+}
+
+#score-board {
+    margin-bottom: 1.5rem;
+    font-size: 1.1em;
+    color: var(--text-muted-color);
+    background-color: var(--container-bg);
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    box-shadow: 0 1px 3px var(--shadow-color);
+}
+#score-board span {
+    font-weight: bold;
+}
+
+/* --- Game Area & Game Over Container --- */
+#game-area, #game-over {
+    background-color: var(--container-bg);
+    padding: 2rem; /* More padding */
+    border-radius: 8px;
+    box-shadow: 0 3px 8px var(--shadow-color);
+    text-align: center;
+    width: 100%; /* Allow flex centering */
+    max-width: 600px; /* Max width for content */
+    margin-bottom: 1rem;
+}
+
+#game-area p:first-child { /* "Which country is closer to..." */
+     font-size: 1.1em;
+     color: var(--text-muted-color);
+     margin-bottom: 0.5rem;
+}
+#game-area #base-country {
+    font-weight: bold;
+    font-size: 1.3em; /* Make base country stand out */
+    color: var(--text-color);
+    margin-bottom: 0.5rem; /* Space before flag */
+    display: inline;
+}
+
+#base-flag-container {
+    margin-bottom: 1.5rem; /* More space after base flag */
+    height: 66px; /* Fixed height */
+    display: inline-block; /* Allow centering via text-align on parent */
+}
+.flag-img.base-flag {
+    height: 100%; /* Fill container height */
+    width: auto;  /* Maintain aspect ratio */
+    max-width: 150px; /* Prevent excessive width */
+}
+
+#choices {
+    display: flex;
+    justify-content: center; /* Center buttons and VS span */
+    align-items: stretch; /* Make buttons same height potentially */
+    gap: 1rem; /* Space between buttons and VS span */
+    margin: 1.5rem 0;
+    width: 100%; /* Take full width */
+}
+
+.vs {
+    font-weight: bold;
+    color: var(--text-muted-color);
+    font-size: 1.5em;
+    display: flex;
+    align-items: center; /* Vertically center the 'vs' */
+    padding: 0 0.5rem; /* Add some horizontal space */
+}
+
+/* --- Flag Buttons --- */
+.choice-button.flag-button {
+    flex: 1;
+    max-width: 200px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    background-color: var(--button-bg);
+    border: 1px solid var(--button-border);
+    border-radius: 6px;
+    padding: 0.75rem 0.5rem; /* Adjust padding */
+    min-height: 130px;
+    cursor: pointer;
+    transition: background-color 0.2s ease, transform 0.1s ease;
+    text-decoration: none;
+    color: var(--text-color);
+}
+.choice-button.flag-button:hover {
+    background-color: var(--button-hover-bg);
+    border-color: var(--border-color); /* Subtle border change */
+}
+.choice-button.flag-button:active {
+    transform: scale(0.98); /* Click feedback */
+}
+.choice-button.flag-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+    transform: none;
+}
+
+.flag-button .flag-container {
+    width: 100%;          /* Take full width of button padding area */
+    max-width: 100px;      /* Limit max flag width */
+    height: 60px;          /* *** Explicit fixed height *** */
+    margin-bottom: 0.5rem;
+    display: flex;         /* Use flex to center the image inside */
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;      /* Hide any overflow if aspect ratio is extreme */
+}
+.flag-button .flag-img {
+    display: block;          /* Remove extra space */
+    max-width: 100%;         /* Never exceed container width */
+    max-height: 100%;        /* Never exceed container height */
+    width: auto;             /* Let browser calculate width based on height/ratio */
+    height: auto;            /* Let browser calculate height based on width/ratio */
+    object-fit: contain;     /* *** CRUCIAL: Scale down to fit, maintain aspect ratio *** */
+    border: 1px solid var(--border-color);
+}
+
+
+.flag-button .country-name-label {
+    /* ... (keep existing styles) ... */
+    font-size: 0.95em;
+    color: var(--text-color);
+    margin-top: auto; /* Pushes to bottom if using space-between on parent */
+    text-align: center;
+    width: 100%;
+    padding: 0 5px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+
+/* Base Flag Container/Image */
+#base-flag-container {
+    margin-bottom: 1.5rem;
+    height: 66px; /* Explicit height */
+    max-width: 150px; /* Set max width */
+    display: inline-flex; /* Use inline-flex for centering */
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+}
+.flag-img.base-flag {
+    display: block;
+    max-width: 100%;
+    max-height: 100%;
+    width: auto;
+    height: auto;
+    object-fit: contain; /* Maintain aspect ratio */
+     border: 1px solid var(--border-color);
+}
+
+
+/* --- Feedback Area --- */
+#feedback {
+    margin-top: 1.5rem;
+    font-weight: bold;
+    min-height: 1.5em;
+    font-size: 1.1em;
+}
+#feedback.correct { color: var(--correct-color); }
+#feedback.incorrect { color: var(--incorrect-color); }
+#feedback.error { color: var(--incorrect-color); font-style: italic; }
+
+#play-again {
+    padding: 0.75rem 1.5rem; /* More padding */
+    font-size: 1.1em;
+    cursor: pointer;
+    border: none;
+    background-color: var(--accent-color);
+    color: white;
+    border-radius: 5px;
+    margin-top: 1rem;
+    transition: background-color 0.2s ease;
+}
+#play-again:hover {
+    background-color: var(--accent-hover-color);
+}
+#play-again:disabled {
+     background-color: #aaa;
+     cursor: not-allowed;
+}
+
+/* --- Map Area --- */
+#map-container {
+    margin-top: 1.5rem;
+    border-top: 1px solid var(--border-color);
+    padding-top: 1.5rem;
+    width: 100%;
+}
+#map-container p a {
+    color: var(--accent-color);
+}
+#svg-map svg {
+    max-width: 100%;
+    height: auto;
+    border: 1px solid var(--border-color);
+    background-color: var(--bg-color); /* Match background */
+    border-radius: 4px;
+}
+
+#feedback-box {
+    display: none;
+    background-color: var(--container-bg);
+    padding: 1rem 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 3px 8px var(--shadow-color);
+    width: 100%;
+    max-width: 600px;
+    margin-top: 0;
+    margin-bottom: 1rem;
+    border: 2px solid transparent;
+    transition: border-color 0.3s ease;
+    text-align: center; /* Add this to center the text content */
+}
+
+#feedback-box p#feedback-text { /* Target the specific paragraph */
+    margin: 0;
+    font-weight: bold;
+    font-size: 1.05em;
+    white-space: pre-line; /* Add this to respect \n characters */
+    line-height: 1.5;      /* Add slightly more space between lines */
+}
+
+#feedback-box.correct {
+    border-color: var(--correct-color);
+}
+#feedback-box.correct #feedback-text {
+    color: var(--correct-color);
+}
+
+#feedback-box.incorrect {
+    border-color: var(--incorrect-color);
+}
+#feedback-box.incorrect #feedback-text {
+    color: var(--incorrect-color);
+}
+
+#map-container {
+    margin-top: 1.5rem;
+    border-top: 1px solid var(--border-color);
+    padding-top: 1.5rem;
+    width: 100%;
+}
+#map-container p {
+    color: var(--text-muted-color);
+}
+#map-container p a {
+    color: var(--accent-color);
+    text-decoration: none;
+    font-weight: bold;
+}
+#map-container p a:hover {
+    text-decoration: underline;
+}
+
+#leaflet-map {
+    height: 400px;
+    width: 100%;
+    margin-top: 0.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background-color: var(--border-color);
+    display: none;
+}
+
+.distance-label-tooltip {
+    background-color: rgba(44, 44, 44, 0.75); /* Semi-transparent dark background */
+    border: 1px solid rgba(255, 255, 255, 0.4); /* Subtle light border */
+    border-radius: 4px;
+    color: #ffffff; /* White text */
+    padding: 3px 6px; /* Small padding */
+    font-size: 0.85em; /* Smaller font */
+    font-weight: bold;
+    white-space: nowrap; /* Keep km on same line */
+    box-shadow: none; /* Remove default Leaflet tooltip shadow */
+    /* Remove default Leaflet tooltip arrow */
+    &:before {
+        display: none;
+    }
+}
+
+@media (prefers-color-scheme: dark) {
+    .leaflet-popup-content-wrapper,
+    .leaflet-popup-tip {
+        background: var(--container-bg);
+        color: var(--text-color);
+        box-shadow: 0 3px 14px var(--shadow-color);
+    }
+     .leaflet-popup-close-button {
+         color: var(--text-muted-color);
+     }
+      .leaflet-popup-close-button:hover {
+         color: var(--text-color);
+     }
+     .distance-label-tooltip {
+        background-color: rgba(20, 20, 20, 0.8); /* Slightly darker */
+        border-color: rgba(255, 255, 255, 0.3);
+    }
+}
+
+#nickname-area {
+    display: none;
+    padding: 1rem;
+    margin: 1rem 0;
+    background-color: rgba(0,0,0,0.1); /* Subtle background */
+    border-radius: 6px;
+}
+@media (prefers-color-scheme: dark) {
+    #nickname-area { background-color: rgba(255,255,255,0.05); }
+}
+
+#nickname-area p:first-child { /* "New High Score! Enter..." */
+    font-weight: bold;
+    margin-bottom: 0.75rem;
+    color: var(--correct-color); /* Highlight */
+}
+
+#nickname-input {
+    padding: 8px 10px;
+    border: 1px solid var(--button-border);
+    border-radius: 4px;
+    margin-right: 5px;
+    background-color: var(--container-bg); /* Match container */
+    color: var(--text-color);
+}
+
+#submit-nickname-btn {
+    padding: 8px 15px;
+    border: none;
+    background-color: var(--accent-color);
+    color: white;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+#submit-nickname-btn:hover { background-color: var(--accent-hover-color); }
+#submit-nickname-btn:disabled { background-color: #aaa; cursor: not-allowed; }
+
+#leaderboard-section {
+    display: none;
+    background-color: var(--container-bg);
+    padding: 1.5rem 2rem;
+    border-radius: 8px;
+    box-shadow: 0 3px 8px var(--shadow-color);
+    width: 100%;
+    max-width: 600px; /* Match game area width */
+    margin-top: 1.5rem;
+    margin-bottom: 2rem;
+    text-align: center;
+}
+#leaderboard-section h2 {
+    margin-top: 0;
+    margin-bottom: 1rem;
+    color: var(--text-color);
+}
+
+#leaderboard-display {
+    text-align: left; /* Align list items left */
+    max-width: 300px; /* Limit width */
+    margin: 0 auto; /* Center the list block */
+}
+#leaderboard-display ol {
+    list-style-position: inside;
+    padding-left: 0;
+}
+#leaderboard-display li {
+    margin-bottom: 0.5rem;
+    font-size: 1.05em;
+    border-bottom: 1px dashed var(--border-color);
+    padding-bottom: 0.5rem;
+}
+#leaderboard-display li:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}

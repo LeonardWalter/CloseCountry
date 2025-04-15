@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <base href="/game/">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Closer Country Game</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+    crossorigin=""/>
+</head>
+<body>
+    <button id="theme-toggle" aria-label="Toggle dark/light mode"> ☀️ </button>
+    <h1>Guess the Closer Country!</h1>
+
+    <div id="score-board">
+        Score: <span id="current-score">0</span> |
+        High Score: <span id="high-score">{{ highscore }}</span>
+    </div>
+
+    <!-- Main Game Area -->
+    <div id="game-area">
+        <p>Which country is closer to: <strong id="base-country">Loading...</strong>?</p>
+        <div id="base-flag-container" class="flag-container">
+             <img id="base-flag-img" src="" alt="Base Country Flag" class="flag-img base-flag">
+        </div>
+        <div id="choices">
+            <button class="choice-button flag-button" id="choice1" data-country="">
+                <div class="flag-container">
+                    <img src="" alt="Flag for Choice 1" class="flag-img choice-flag">
+                </div>
+                <span class="country-name-label"></span>
+            </button>
+            <span class="vs">vs</span>
+            <button class="choice-button flag-button" id="choice2" data-country="">
+                 <div class="flag-container">
+                    <img src="" alt="Flag for Choice 2" class="flag-img choice-flag">
+                 </div>
+                 <span class="country-name-label"></span>
+            </button>
+        </div>
+    </div>
+
+    <div id="game-over" style="display: none;">
+        <h2>GAME OVER</h2>
+        <p>Final Score: <span id="final-score">0</span></p>
+
+        <div id="nickname-area" style="display: none; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
+            <p>🎉 New High Score! Enter your name for the leaderboard: 🎉</p>
+            <input type="text" id="nickname-input" placeholder="Your Nickname (max 20 chars)" maxlength="20" required>
+            <button id="submit-nickname-btn">Submit Score</button>
+            <p id="nickname-feedback" style="font-size: 0.9em; margin-top: 5px;"></p>
+        </div>
+
+        <button id="play-again">Play Again?</button>
+        <div id="map-container">
+             <p><a href="#" id="show-map-link">Show Map</a></p>
+             <div id="leaflet-map"></div>
+        </div>
+    </div>
+
+    <div id="feedback-box">
+        <p id="feedback-text"></p>
+    </div>
+
+    <div id="leaderboard-section">
+        <h2>🏆 Leaderboard 🏆</h2>
+        <div id="leaderboard-display">
+            <p>Loading...</p>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+     crossorigin=""></script>
+    <script src="{{ url_for('static', filename='js/game.js') }}"></script>
+</body>
+</html>
