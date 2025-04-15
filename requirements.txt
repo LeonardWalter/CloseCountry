@@ -4,3 +4,4 @@ geopandas
 shapely
 pyproj
 gunicorn
+python-dotenv
