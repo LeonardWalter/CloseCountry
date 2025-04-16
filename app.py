@@ -8,7 +8,7 @@ import geopandas as gpd
 import re
 
 
-from flask import Flask, render_template, jsonify, request, session, g
+from flask import Flask, render_template, jsonify, escape, request, session, g
 from shapely.ops import unary_union, nearest_points
 from shapely.geometry import LineString, mapping
 from pyproj import Geod
