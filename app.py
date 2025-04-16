@@ -510,7 +510,6 @@ def get_game_over_data_route():
 def submit_nickname():
     ensure_user_id()
     user_id = session['user_id']
-
     final_score = session.pop('last_final_score', None)
     data = request.get_json()
     # Only need nickname from client now
@@ -526,7 +525,13 @@ def submit_nickname():
     if not isinstance(nickname, str):
          return jsonify({'error': 'Invalid data type for nickname'}), 400
 
-    update_leaderboard(user_id, nickname, final_score)
+    nickname = nickname.strip()
+    if len(nickname) < 2 or len(nickname) > 20:
+        return jsonify({'error': 'Nickname must be between 2 and 20 characters'}), 400
+    if not re.match(r'^[A-Za-z0-9_\-\.]+$', nickname):
+        return jsonify({'error': 'Nickname contains invalid characters'}), 400
+
+    update_leaderboard(user_id, escape(nickname), final_score)
     top_scores = get_top_scores(LEADERBOARD_SIZE)
     return jsonify({'success': True, 'leaderboard': top_scores})
 
