@@ -3,7 +3,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const bodyElement = document.body;
 
     const baseCountryEl = document.getElementById('base-country');
-    const baseFlagImg = document.getElementById('base-flag-img');
     const choice1Button = document.getElementById('choice1');
     const choice2Button = document.getElementById('choice2');
     const currentScoreEl = document.getElementById('current-score');
@@ -94,12 +93,6 @@ document.addEventListener('DOMContentLoaded', () => {
        currentTarget2Name = data.target2.name;
 
        baseCountryEl.textContent = currentBaseCountryName;
-       if (data.base_country.code) {
-           baseFlagImg.src = getStaticPath(`svg/${data.base_country.code.toLowerCase()}.svg`);
-           baseFlagImg.alt = `Flag of ${currentBaseCountryName}`;
-           baseFlagImg.style.display = 'inline-block';
-       } else { baseFlagImg.style.display = 'none'; }
-
        choice1Button.dataset.country = currentTarget1Name;
        choice1Label.textContent = currentTarget1Name;
        if (data.target1.code) {
