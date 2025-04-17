@@ -387,7 +387,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if (data.leaderboard && data.leaderboard.length > 0) {
                 let leaderboardHTML = '<ol>';
                 data.leaderboard.forEach((entry) => {
-                    console.log("found entry:", entry.nickname, entry.score);
                     leaderboardHTML += `<li> ${escapeHTML(entry.nickname || 'Anonymous')} - ${entry.score}</li>`;
                 });
                 leaderboardHTML += '</ol>';
