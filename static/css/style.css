@@ -143,18 +143,7 @@ h1 {
     font-size: 1.3em; /* Make base country stand out */
     color: var(--text-color);
     margin-bottom: 0.5rem; /* Space before flag */
-    display: inline;
-}
-
-#base-flag-container {
-    margin-bottom: 1.5rem; /* More space after base flag */
-    height: 66px; /* Fixed height */
-    display: inline-block; /* Allow centering via text-align on parent */
-}
-.flag-img.base-flag {
-    height: 100%; /* Fill container height */
-    width: auto;  /* Maintain aspect ratio */
-    max-width: 150px; /* Prevent excessive width */
+    display: inline-block;
 }
 
 #choices {
@@ -182,12 +171,12 @@ h1 {
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: space-between;
+    justify-content: flex-start;
     background-color: var(--button-bg);
     border: 1px solid var(--button-border);
     border-radius: 6px;
     padding: 0.75rem 0.5rem; /* Adjust padding */
-    min-height: 130px;
+    min-height: 140px;
     cursor: pointer;
     transition: background-color 0.2s ease, transform 0.1s ease;
     text-decoration: none;
@@ -210,7 +199,7 @@ h1 {
     width: 100%;          /* Take full width of button padding area */
     max-width: 100px;      /* Limit max flag width */
     height: 60px;          /* *** Explicit fixed height *** */
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.75rem;
     display: flex;         /* Use flex to center the image inside */
     justify-content: center;
     align-items: center;
@@ -225,42 +214,17 @@ h1 {
     object-fit: contain;     /* *** CRUCIAL: Scale down to fit, maintain aspect ratio *** */
     border: 1px solid var(--border-color);
 }
-
-
 .flag-button .country-name-label {
     /* ... (keep existing styles) ... */
-    font-size: 0.95em;
+    font-size: 0.9em;
     color: var(--text-color);
     margin-top: auto; /* Pushes to bottom if using space-between on parent */
     text-align: center;
-    width: 100%;
-    padding: 0 5px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    width: 95%;
+    padding: 0 2px;
+    word-wrap: break-word; /* Allow long words to break if needed */
+    line-height: 1.2;
 }
-
-
-/* Base Flag Container/Image */
-#base-flag-container {
-    margin-bottom: 1.5rem;
-    height: 66px; /* Explicit height */
-    max-width: 150px; /* Set max width */
-    display: inline-flex; /* Use inline-flex for centering */
-    justify-content: center;
-    align-items: center;
-    overflow: hidden;
-}
-.flag-img.base-flag {
-    display: block;
-    max-width: 100%;
-    max-height: 100%;
-    width: auto;
-    height: auto;
-    object-fit: contain; /* Maintain aspect ratio */
-     border: 1px solid var(--border-color);
-}
-
 
 /* --- Feedback Area --- */
 #feedback {
