@@ -115,8 +115,8 @@ document.addEventListener('DOMContentLoaded', () => {
        highScoreEl.textContent = data.highscore;
    }
 
-    async function prefetchNextRound() {
-        try {
+   async function prefetchNextRound() {
+    try {
         // Fetch data but don't update UI yet
         const response = await fetch('start_round');
         if (!response.ok) {
@@ -126,16 +126,16 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         const data = await response.json();
         if (data.error || data.game_over) {
-                console.error("Prefetch failed with error/game over:", data.error || data.message);
-                prefetchedRoundData = null; // Ensure fallback fetch happens
-                return;
+            console.error("Prefetch failed with error/game over:", data.error || data.message);
+            prefetchedRoundData = null; // Ensure fallback fetch happens
+            return;
         }
         prefetchedRoundData = data; // Store successful prefetch
-        } catch (error) {
-            console.error('Error during prefetch:', error);
-            prefetchedRoundData = null; // Clear on any error
-        }
+    } catch (error) {
+        console.error('Error during prefetch:', error);
+        prefetchedRoundData = null; // Clear on any error
     }
+}
 
 
     // Fetches data for a new round from the backend
@@ -161,10 +161,19 @@ document.addEventListener('DOMContentLoaded', () => {
         setLoadingState(true); // Disable buttons
 
         if (prefetchedRoundData) {
-            displayRoundData(prefetchedRoundData); // Update UI with stored data
+            const dataToDisplay = prefetchedRoundData;
             prefetchedRoundData = null; // Consume the prefetched data
-            setLoadingState(false);     // Hide loading state
-            isFetchingRound = false;    // Allow next fetch
+            try {
+                displayRoundData(dataToDisplay); // Update UI with stored data
+                prefetchNextRound(); // START PREFETCHING AGAIN
+            } catch(e){
+                isFetchingRound = false; // Reset flag before potential recursive call
+                await fetchNewRound(); // Try fetching normally
+                return;
+            } finally {
+                setLoadingState(false);     // Hide loading state
+                isFetchingRound = false;    // Allow next fetch
+            }
             return; // Skip the fetch call
         }
 
@@ -172,17 +181,27 @@ document.addEventListener('DOMContentLoaded', () => {
             const response = await fetch('start_round');
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             const data = await response.json();
-
-            displayRoundData(data); 
+    
+            if (data.error || data.game_over) {
+                feedbackTextEl.textContent = data?.error || data?.message || 'Failed to start round.';
+                feedbackBoxEl.className = 'incorrect';
+                feedbackBoxEl.style.display = 'block';
+                gameAreaEl.style.display = 'none';
+                gameOverEl.style.display = 'block'; // Show game over if applicable
+                handleGameOver(data); // Process game over data
+            } else {
+                displayRoundData(data);
+                prefetchNextRound();
+            }
         } catch (error) {
             console.error('Error fetching new round:', error);
             feedbackTextEl.textContent = 'Error loading game round. Please try refreshing.';
             feedbackBoxEl.className = 'incorrect';
             feedbackBoxEl.style.display = 'block';
-            gameAreaEl.style.display = 'none'; 
+            gameAreaEl.style.display = 'none';
         } finally {
             setLoadingState(false); // Re-enable buttons
-            isFetchingRound = false; // Allow next fetch
+            isFetchingRound = false; // Allow next fetch/prefetch
         }
     }
 
@@ -190,6 +209,7 @@ document.addEventListener('DOMContentLoaded', () => {
     async function makeGuess(chosenCountryName) {
         const otherCountryName = (chosenCountryName === currentTarget1Name) ? currentTarget2Name : currentTarget1Name;
         setLoadingState(true); // Disable buttons while checking
+        prefetchedRoundData = null;
 
         try {
             const response = await fetch('make_guess', {
@@ -201,19 +221,19 @@ document.addEventListener('DOMContentLoaded', () => {
                     other_country_name: otherCountryName
                 }),
             });
-
+    
             if (!response.ok) {
                  const errorData = await response.json().catch(() => ({ error: 'Unknown server error' }));
                  throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
             }
             const result = await response.json();
-
+    
             // Construct feedback message with newlines
             let feedbackPrefix = "";
             let feedbackClass = "";
             const distString1 = `Distance to ${chosenCountryName}: ${result.chosen_dist} km`;
             const distString2 = `Distance to ${otherCountryName}: ${result.other_dist} km`;
-
+    
             if (result.correct) {
                 feedbackPrefix = `CORRECT! ${currentBaseCountryName} is closer to ${result.closer_country}.`;
                 feedbackClass = 'correct';
@@ -222,43 +242,33 @@ document.addEventListener('DOMContentLoaded', () => {
                     highScoreEl.textContent = result.highscore;
                     feedbackPrefix += "\n✨ New High Score! ✨";
                 }
-
+    
                 prefetchNextRound();
-
+    
                 const finalFeedbackText = `${feedbackPrefix}\n${distString1}\n${distString2}`;
                 feedbackTextEl.textContent = finalFeedbackText;
                 feedbackBoxEl.className = feedbackClass;
                 feedbackBoxEl.style.display = 'block';
-                // Schedule the next round fetch AFTER feedback is shown
-                setTimeout(fetchNewRound, 500);
-
+                fetchNewRound();
             } else {
-                 feedbackPrefix = `WRONG! ${currentBaseCountryName} is closer to  ${result.closer_country}.`;
-                 feedbackClass = 'incorrect';
-
+                feedbackPrefix = `WRONG! ${currentBaseCountryName} is closer to  ${result.closer_country}.`;
+                feedbackClass = 'incorrect';
+    
                  const finalFeedbackText = `${feedbackPrefix}\n${distString1}\n${distString2}`;
                  feedbackTextEl.textContent = finalFeedbackText;
                  feedbackBoxEl.className = feedbackClass;
                  feedbackBoxEl.style.display = 'block';
-
+    
                  handleGameOver(result);
                  setLoadingState(false);
             }
-
-            // Display feedback in the persistent box
-            const finalFeedbackText = `${feedbackPrefix}\n${distString1}\n${distString2}`;
-            feedbackTextEl.textContent = finalFeedbackText;
-            feedbackBoxEl.className = feedbackClass;
-            feedbackBoxEl.style.display = 'block'; // Show the box
-
         } catch (error) {
             console.error('Error making guess:', error);
-            feedbackTextEl.textContent = `Error: ${error.message}.\nPlease try again.`;
+            feedbackTextEl.textContent = `Error: ${error.message}.\nPlease try again or refresh.`;
             feedbackBoxEl.className = 'incorrect';
             feedbackBoxEl.style.display = 'block';
             setLoadingState(false); // Re-enable buttons on error
         }
-        // Loading state is handled within branches or finally blocks
     }
 
     // Handles the UI changes when the game ends
