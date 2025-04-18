@@ -32,7 +32,9 @@ GEOMETRY_SIMPLIFY_TOLERANCE = 0.05
 
 load_dotenv()
 app = Flask(__name__)
-app.secret_key = os.environ.get('SECRET_KEY') 
+app.secret_key = os.environ.get('SECRET_KEY')
+DATABASE_FILE = os.environ.get('DATABASE_FILE_PATH', 'highscores.db')
+
 if not app.secret_key:
      app.logger.critical("FATAL: SECRET_KEY environment variable not set!")
 # app.logger.setLevel(logging.DEBUG)
@@ -86,32 +88,16 @@ def close_db(e=None):
     if db is not None: db.close()
 
 def init_db():
-    """Initializes the database; creates table if needed."""
+    """Initializes the database; creates tables if they don't exist."""
     try:
         db = sqlite3.connect(DATABASE_FILE)
-        # Check if table exists first to avoid errors on restart
         cursor = db.cursor()
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='highscores';")
-        if not cursor.fetchone():
-            app.logger.info("Creating highscores table...")
-            cursor.execute(
-                "CREATE TABLE highscores (user_id TEXT PRIMARY KEY, highscore INTEGER NOT NULL DEFAULT 0)"
-            )
-            db.commit()
-
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='leaderboard';")
-        if not cursor.fetchone():
-             app.logger.info("Creating leaderboard table...")
-             # user_id is still PRIMARY KEY to prevent multiple entries per user
-             cursor.execute(
-                 "CREATE TABLE leaderboard (user_id TEXT PRIMARY KEY, nickname TEXT, score INTEGER NOT NULL DEFAULT 0)"
-             )
-             db.commit()
-             app.logger.info("Leaderboard table created.")
-
+        cursor.execute("CREATE TABLE IF NOT EXISTS highscores (user_id TEXT PRIMARY KEY, highscore INTEGER NOT NULL DEFAULT 0)")
+        cursor.execute("CREATE TABLE IF NOT EXISTS leaderboard (user_id TEXT PRIMARY KEY, nickname TEXT, score INTEGER NOT NULL DEFAULT 0)")
+        db.commit()
         db.close()
     except Exception as e:
-         app.logger.error(f"Failed to initialize database: {e}", exc_info=True)
+        app.logger.error(f"Failed during database initialization: {e}", exc_info=True)
 
 def load_processed_shapes(
     shapes_filepath: str,
@@ -267,6 +253,14 @@ def get_distance(c1: str, c2: str) -> Optional[float]:
     if distances_data is None: return None
     return distances_data.get(frozenset([c1, c2]))
 
+
+db_dir = os.path.dirname(DATABASE_FILE)
+if db_dir and not os.path.exists(db_dir):
+    try:
+        os.makedirs(db_dir)
+        app.logger.info(f"Created database directory: {db_dir}")
+    except OSError as e:
+        app.logger.error(f"Could not create database directory {db_dir}: {e}", exc_info=True)
 
 app.logger.info("Starting initial data loading...")
 init_db()

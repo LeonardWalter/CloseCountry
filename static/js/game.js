@@ -1,3 +1,6 @@
+const APP_VERSION = "dev-local";
+console.log("Closer Country App Version:", APP_VERSION);
+
 document.addEventListener('DOMContentLoaded', () => {
     const themeToggleButton = document.getElementById('theme-toggle');
     const bodyElement = document.body;
