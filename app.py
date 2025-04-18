@@ -21,7 +21,7 @@ from dotenv import load_dotenv
 DATABASE_FILE = 'highscores.db'
 LEADERBOARD_SIZE = 5
 DISTANCES_DATA_FILE = 'distances.jsonl'
-GEOJSON_SHAPES_FILE = 'test.geo.json'
+GEOJSON_SHAPES_FILE = 'world.geo.json'
 COUNTRY_CODES_FILE = 'country_codes.json'
 HIGHSCORE_FILE = 'closer_country_highscore.txt'
 SHAPES_NAME_COLUMN = 'name_en'
