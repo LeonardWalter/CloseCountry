@@ -7,15 +7,12 @@ import sys
 import geopandas as gpd
 import re
 
-
 from flask import Flask, render_template, jsonify, request, session, g
 from shapely.ops import unary_union, nearest_points
 from shapely.geometry import LineString, mapping
 from pyproj import Geod
 from typing import Dict, Optional, List, Set, FrozenSet
 from dotenv import load_dotenv
-
-
 
 # --- Configuration & Constants ---
 DATABASE_FILE = 'highscores.db'
@@ -36,7 +33,7 @@ app.secret_key = os.environ.get('SECRET_KEY')
 DATABASE_FILE = os.environ.get('DATABASE_FILE_PATH', 'highscores.db')
 
 if not app.secret_key:
-     app.logger.critical("FATAL: SECRET_KEY environment variable not set!")
+    app.logger.critical("FATAL: SECRET_KEY environment variable not set!")
 # app.logger.setLevel(logging.DEBUG)
 
 # --- Global Data Storage ---
@@ -68,8 +65,8 @@ def load_country_mapping_from_json(mapping_filepath: str) -> Optional[Dict[str, 
         return mapping if mapping else None
 
     except json.JSONDecodeError as e:
-         app.logger.error(f"Error decoding JSON from '{mapping_filepath}': {e}", exc_info=True)
-         return None
+        app.logger.error(f"Error decoding JSON from '{mapping_filepath}': {e}", exc_info=True)
+        return None
     except Exception as e:
         app.logger.error(f"Error reading mapping file '{mapping_filepath}': {e}", exc_info=True)
         return None
@@ -151,15 +148,15 @@ def load_processed_shapes(
         # Optional: Set index for potentially faster lookups later
         try:
             if gdf_filtered.index.name != name_col and gdf_filtered[name_col].is_unique:
-                 gdf_filtered = gdf_filtered.set_index(name_col)
-                 app.logger.info(f"Set index of shapes cache to '{name_col}'.")
+                gdf_filtered = gdf_filtered.set_index(name_col)
+                app.logger.info(f"Set index of shapes cache to '{name_col}'.")
             elif gdf_filtered.index.name == name_col:
-                 app.logger.info(f"Shapes cache index already set to '{name_col}'.")
+                app.logger.info(f"Shapes cache index already set to '{name_col}'.")
             else:
-                 app.logger.warning(f"Cannot set index to '{name_col}' (not unique?). Proceeding without index.")
+                app.logger.warning(f"Cannot set index to '{name_col}' (not unique?). Proceeding without index.")
 
         except Exception as idx_e:
-             app.logger.warning(f"Could not set index on shapes cache: {idx_e}")
+            app.logger.warning(f"Could not set index on shapes cache: {idx_e}")
 
 
         app.logger.info(f"Shape preprocessing complete. Cached {len(gdf_filtered)} valid features.")
@@ -206,7 +203,7 @@ def update_user_highscore(user_id: str, score: int):
                 (user_id, score)
             )
     except Exception as e:
-         app.logger.error(f"Failed to update highscore for user {user_id}: {e}", exc_info=True)
+        app.logger.error(f"Failed to update highscore for user {user_id}: {e}", exc_info=True)
 
 def update_leaderboard(user_id: str, nickname: str, score: int):
     """Inserts or updates a user's score and nickname on the leaderboard."""
@@ -220,17 +217,17 @@ def update_leaderboard(user_id: str, nickname: str, score: int):
     app.logger.info(f"Updating leaderboard: User={user_id}, Nickname='{nickname}', Score={score}")
     try:
         with db:
-             # Insert new entry or replace existing entry for the user_id.
-             db.execute(
-                 """
-                 INSERT INTO leaderboard (user_id, nickname, score) VALUES (?, ?, ?)
-                 ON CONFLICT(user_id) DO UPDATE SET
-                     nickname = excluded.nickname,
-                     score = excluded.score
-                 WHERE excluded.score >= leaderboard.score
-                 """,
-                 (user_id, nickname, score)
-             )
+            # Insert new entry or replace existing entry for the user_id.
+            db.execute(
+                """
+                INSERT INTO leaderboard (user_id, nickname, score) VALUES (?, ?, ?)
+                ON CONFLICT(user_id) DO UPDATE SET
+                    nickname = excluded.nickname,
+                    score = excluded.score
+                WHERE excluded.score >= leaderboard.score
+                """,
+                (user_id, nickname, score)
+            )
     except Exception as e:
         app.logger.error(f"Failed to update leaderboard for user {user_id}: {e}", exc_info=True)
 
@@ -317,8 +314,8 @@ def start_round():
     user_highscore = session.get('user_highscore', get_user_highscore(user_id))
 
     if 'score' not in session:
-         session['score'] = 0
-         app.logger.debug(f"GET /start_round: Score missing, reset to 0 for user {user_id}")
+        session['score'] = 0
+        app.logger.debug(f"GET /start_round: Score missing, reset to 0 for user {user_id}")
 
     global country_list, country_code_map
     if not country_list or not country_code_map: return jsonify({'error': 'Game data not fully loaded'}), 500
@@ -394,8 +391,8 @@ def make_guess():
             response_data['existing_nickname'] = existing_nickname 
             app.logger.debug(f"Game over for user {user_id}. Final score {final_score} is a new/matching high score. Prompting for nickname.")
         else:
-             response_data['prompt_nickname'] = False
-             app.logger.debug(f"Game over for user {user_id}. Final score {final_score} is not a new high score ({current_user_highscore}).")
+            response_data['prompt_nickname'] = False
+            app.logger.debug(f"Game over for user {user_id}. Final score {final_score} is not a new high score ({current_user_highscore}).")
 
         session.pop('score', None) # Remove score to trigger reset in /start_round
         session.pop('base_country', None)
@@ -416,15 +413,15 @@ def get_game_over_data_route():
 
     # Use preloaded shapes data
     if gdf_all_shapes_preload is None or gdf_all_shapes_preload.empty:
-         app.logger.error("Map data requested, but preloaded shapes data is not available.")
-         return jsonify({"error": "Internal Server Error: Shape data unavailable"}), 500
+        app.logger.error("Map data requested, but preloaded shapes data is not available.")
+        return jsonify({"error": "Internal Server Error: Shape data unavailable"}), 500
     # Make a copy to avoid modifying the global preload if needed for filtering etc.
     gdf_shapes = gdf_all_shapes_preload.copy()
 
     # Check name column just in case
     if SHAPES_NAME_COLUMN not in gdf_shapes.columns and gdf_shapes.index.name != SHAPES_NAME_COLUMN:
-         app.logger.error(f"Name identifier '{SHAPES_NAME_COLUMN}' not found as column or index in preloaded shapes.")
-         return jsonify({"error": "Internal Server Error: Shape configuration"}), 500
+        app.logger.error(f"Name identifier '{SHAPES_NAME_COLUMN}' not found as column or index in preloaded shapes.")
+        return jsonify({"error": "Internal Server Error: Shape configuration"}), 500
 
     features = []
     involved_countries = [base_c, target_c1, target_c2]
@@ -444,18 +441,18 @@ def get_game_over_data_route():
             # Use boolean mask for column lookup
             gdf_involved = gdf_shapes[gdf_shapes[SHAPES_NAME_COLUMN].isin(involved_countries)]
             if len(gdf_involved) != len(involved_countries):
-                 found_names = gdf_involved[SHAPES_NAME_COLUMN].tolist()
-                 missing = set(involved_countries) - set(found_names)
-                 app.logger.warning(f"Could not find all requested countries in shapes column: Missing {missing}")
-                 return jsonify({"error": f"Could not find shape data for countries: {missing}"}), 404
+                found_names = gdf_involved[SHAPES_NAME_COLUMN].tolist()
+                missing = set(involved_countries) - set(found_names)
+                app.logger.warning(f"Could not find all requested countries in shapes column: Missing {missing}")
+                return jsonify({"error": f"Could not find shape data for countries: {missing}"}), 404
             iterator = gdf_involved.iterrows()
 
         for index, row in iterator:
             country_name = index if gdf_shapes.index.name == SHAPES_NAME_COLUMN else row[SHAPES_NAME_COLUMN]
             current_geom = row.geometry
             if not current_geom or not current_geom.is_valid or current_geom.is_empty:
-                 app.logger.warning(f"Skipping invalid geometry for {country_name} found in cache during map generation.")
-                 continue
+                app.logger.warning(f"Skipping invalid geometry for {country_name} found in cache during map generation.")
+                continue
 
             geom_orig = unary_union(current_geom)
             geoms[country_name] = geom_orig
@@ -504,6 +501,7 @@ def get_game_over_data_route():
 def submit_nickname():
     ensure_user_id()
     user_id = session['user_id']
+
     final_score = session.pop('last_final_score', None)
     data = request.get_json()
     # Only need nickname from client now
@@ -512,8 +510,8 @@ def submit_nickname():
 
     nickname = data.get('nickname')
     if final_score is None or not isinstance(final_score, int) or final_score < 0:
-         app.logger.warning(f"Attempted nickname submission for user {user_id} without a valid final score in session.")
-         return jsonify({'error': 'No valid score available for submission.'}), 400
+        app.logger.warning(f"Attempted nickname submission for user {user_id} without a valid final score in session.")
+        return jsonify({'error': 'No valid score available for submission.'}), 400
 
     # Basic validation for nickname
     if not isinstance(nickname, str):
@@ -531,5 +529,5 @@ def submit_nickname():
 
 @app.route('/get_leaderboard', methods=['GET'])
 def get_leaderboard_route():
-     top_scores = get_top_scores(LEADERBOARD_SIZE)
-     return jsonify({'leaderboard': top_scores})
+    top_scores = get_top_scores(LEADERBOARD_SIZE)
+    return jsonify({'leaderboard': top_scores})

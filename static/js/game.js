@@ -118,27 +118,27 @@ document.addEventListener('DOMContentLoaded', () => {
        highScoreEl.textContent = data.highscore;
    }
 
-   async function prefetchNextRound() {
-    try {
-        // Fetch data but don't update UI yet
-        const response = await fetch('start_round');
-        if (!response.ok) {
-            console.error(`Prefetch HTTP error! status: ${response.status}`);
-            prefetchedRoundData = null; // Ensure fallback fetch happens
-            return;
+    async function prefetchNextRound() {
+        try {
+            // Fetch data but don't update UI yet
+            const response = await fetch('start_round');
+            if (!response.ok) {
+                console.error(`Prefetch HTTP error! status: ${response.status}`);
+                prefetchedRoundData = null; // Ensure fallback fetch happens
+                return;
+            }
+            const data = await response.json();
+            if (data.error || data.game_over) {
+                console.error("Prefetch failed with error/game over:", data.error || data.message);
+                prefetchedRoundData = null; // Ensure fallback fetch happens
+                return;
+            }
+            prefetchedRoundData = data; // Store successful prefetch
+        } catch (error) {
+            console.error('Error during prefetch:', error);
+            prefetchedRoundData = null; // Clear on any error
         }
-        const data = await response.json();
-        if (data.error || data.game_over) {
-            console.error("Prefetch failed with error/game over:", data.error || data.message);
-            prefetchedRoundData = null; // Ensure fallback fetch happens
-            return;
-        }
-        prefetchedRoundData = data; // Store successful prefetch
-    } catch (error) {
-        console.error('Error during prefetch:', error);
-        prefetchedRoundData = null; // Clear on any error
     }
-}
 
 
     // Fetches data for a new round from the backend
@@ -184,7 +184,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const response = await fetch('start_round');
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             const data = await response.json();
-    
+
             if (data.error || data.game_over) {
                 feedbackTextEl.textContent = data?.error || data?.message || 'Failed to start round.';
                 feedbackBoxEl.className = 'incorrect';
@@ -224,30 +224,29 @@ document.addEventListener('DOMContentLoaded', () => {
                     other_country_name: otherCountryName
                 }),
             });
-    
+
             if (!response.ok) {
-                 const errorData = await response.json().catch(() => ({ error: 'Unknown server error' }));
-                 throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+                const errorData = await response.json().catch(() => ({ error: 'Unknown server error' }));
+                throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
             }
             const result = await response.json();
-    
+
             // Construct feedback message with newlines
             let feedbackPrefix = "";
             let feedbackClass = "";
             const distString1 = `Distance to ${chosenCountryName}: ${result.chosen_dist} km`;
             const distString2 = `Distance to ${otherCountryName}: ${result.other_dist} km`;
-    
+
             if (result.correct) {
                 feedbackPrefix = `CORRECT! ${currentBaseCountryName} is closer to ${result.closer_country}.`;
                 feedbackClass = 'correct';
                 currentScoreEl.textContent = result.score;
-                 if (result.new_highscore) {
+                if (result.new_highscore) {
                     highScoreEl.textContent = result.highscore;
                     feedbackPrefix += "\n✨ New High Score! ✨";
                 }
-    
+
                 prefetchNextRound();
-    
                 const finalFeedbackText = `${feedbackPrefix}\n${distString1}\n${distString2}`;
                 feedbackTextEl.textContent = finalFeedbackText;
                 feedbackBoxEl.className = feedbackClass;
@@ -256,17 +255,16 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 feedbackPrefix = `WRONG! ${currentBaseCountryName} is closer to  ${result.closer_country}.`;
                 feedbackClass = 'incorrect';
-    
-                 const finalFeedbackText = `${feedbackPrefix}\n${distString1}\n${distString2}`;
-                 feedbackTextEl.textContent = finalFeedbackText;
-                 feedbackBoxEl.className = feedbackClass;
-                 feedbackBoxEl.style.display = 'block';
-    
-                 handleGameOver(result);
-                 setLoadingState(false);
+
+                const finalFeedbackText = `${feedbackPrefix}\n${distString1}\n${distString2}`;
+                feedbackTextEl.textContent = finalFeedbackText;
+                feedbackBoxEl.className = feedbackClass;
+                feedbackBoxEl.style.display = 'block';
+
+                handleGameOver(result);
+                setLoadingState(false);
             }
         } catch (error) {
-            console.error('Error making guess:', error);
             feedbackTextEl.textContent = `Error: ${error.message}.\nPlease try again or refresh.`;
             feedbackBoxEl.className = 'incorrect';
             feedbackBoxEl.style.display = 'block';
@@ -303,8 +301,8 @@ document.addEventListener('DOMContentLoaded', () => {
             mapParams = result.map_params;
             showMapLink.style.display = 'inline';
         } else {
-             showMapLink.style.display = 'none';
-             mapParams = null;
+            showMapLink.style.display = 'none';
+            mapParams = null;
         }
         fetchAndDisplayLeaderboard()
     }
@@ -326,14 +324,14 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const response = await fetch(mapDataUrl);
             if (!response.ok) {
-                 let errorText = `Failed to load map data (Status: ${response.status})`;
-                 try { const errData = await response.text(); if (errData) errorText += `: ${errData}`; } catch (e) {}
-                 throw new Error(errorText);
+                let errorText = `Failed to load map data (Status: ${response.status})`;
+                try { const errData = await response.text(); if (errData) errorText += `: ${errData}`; } catch (e) {}
+                throw new Error(errorText);
             }
             const geojsonData = await response.json();
 
             if (!geojsonData || geojsonData.type !== 'FeatureCollection' || !geojsonData.features) {
-                 throw new Error("Invalid GeoJSON data received from server.");
+                throw new Error("Invalid GeoJSON data received from server.");
             }
 
             leafletMapContainer.innerHTML = '';
@@ -384,8 +382,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.warn("Could not fit map bounds automatically.", e);
             }
         } catch (error) {
-             console.error("Error fetching or displaying map:", error);
-             leafletMapContainer.innerHTML = `<p style="color: var(--incorrect-color);">Sorry, could not load the map. ${error.message || ''}</p>`;
+            console.error("Error fetching or displaying map:", error);
+            leafletMapContainer.innerHTML = `<p style="color: var(--incorrect-color);">Sorry, could not load the map. ${error.message || ''}</p>`;
         }
     }
 
@@ -439,8 +437,8 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             if (!response.ok) {
-                 const errData = await response.json().catch(() => ({error: 'Unknown error'}));
-                 throw new Error(errData.error || 'Failed to submit score.');
+                const errData = await response.json().catch(() => ({error: 'Unknown error'}));
+                throw new Error(errData.error || 'Failed to submit score.');
             }
 
             const result = await response.json();
@@ -456,25 +454,25 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
         } catch (error) {
-             console.error("Error submitting nickname:", error);
-             nicknameFeedback.textContent = `Error: ${error.message}`;
-             nicknameFeedback.style.color = 'var(--incorrect-color)';
-             submitNicknameBtn.disabled = false;
+            console.error("Error submitting nickname:", error);
+            nicknameFeedback.textContent = `Error: ${error.message}`;
+            nicknameFeedback.style.color = 'var(--incorrect-color)';
+            submitNicknameBtn.disabled = false;
         }
     });
 
     function updateLeaderboardUI(leaderboardData) {
         if (leaderboardData && leaderboardData.length > 0) {
-               let leaderboardHTML = '<ol>';
-               leaderboardData.forEach((entry, index) => {
-                    leaderboardHTML += `<li>${escapeHTML(entry.nickname || 'Anonymous')} - ${entry.score}</li>`;
-               });
-               leaderboardHTML += '</ol>';
-               leaderboardDisplay.innerHTML = leaderboardHTML;
-           } else {
-               leaderboardDisplay.innerHTML = '<p>No scores yet. Be the first!</p>';
-           }
-   }
+            let leaderboardHTML = '<ol>';
+            leaderboardData.forEach((entry, index) => {
+                leaderboardHTML += `<li>${escapeHTML(entry.nickname || 'Anonymous')} - ${entry.score}</li>`;
+            });
+            leaderboardHTML += '</ol>';
+            leaderboardDisplay.innerHTML = leaderboardHTML;
+        } else {
+            leaderboardDisplay.innerHTML = '<p>No scores yet. Be the first!</p>';
+        }
+    }
 
     choice1Button.addEventListener('click', () => makeGuess(choice1Button.dataset.country));
     choice2Button.addEventListener('click', () => makeGuess(choice2Button.dataset.country));
