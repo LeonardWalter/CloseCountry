@@ -32,8 +32,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentBaseCountryName = '';
     let currentTarget1Name = '';
     let currentTarget2Name = '';
-    let mapParams = null; // Stores {base, t1, t2} for map request
-    let map = null; // Holds the Leaflet map instance
+    let mapParams = null;
+    let map = null;
     let isFetchingRound = false;
 
     const sunIcon = '☀️';
@@ -117,7 +117,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function prefetchSvgs(codes) {
         if (!Array.isArray(codes)) return;
-        console.log("Prefetching SVGs for codes:", codes); // DEBUG
         codes.forEach(code => {
             if (code && typeof code === 'string') {
                 try {
@@ -139,7 +138,6 @@ document.addEventListener('DOMContentLoaded', () => {
             feedbackTextEl.textContent = '';
             feedbackBoxEl.className = '';
         }
-        // ... (rest of UI cleanup: leaderboard, nickname, map) ...
         leaderboardSection.style.display = 'none';
         nicknameArea.style.display = 'none';
         leafletMapContainer.style.display = 'none';
@@ -164,13 +162,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 gameOverEl.style.display = 'block';
                 handleGameOver(data); // Process game over data
             } else {
-                console.log("Fetch successful, displaying data for:", data.base_country.name); // DEBUG
                 displayRoundData(data);
                 const codesToPrefetch = [
-                    data.next_target1_code, // Use the specific codes for next choices
+                    data.next_target1_code,
                     data.next_target2_code,
-                    data.base_country?.code // Prefetch current base flag too as it's shown now
-                ].filter(Boolean); // Filter out any null/undefined codes
+                ].filter(Boolean);
                 prefetchSvgs(codesToPrefetch);
             }
         } catch (error) {
