@@ -34,7 +34,6 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentTarget2Name = '';
     let mapParams = null; // Stores {base, t1, t2} for map request
     let map = null; // Holds the Leaflet map instance
-    let prefetchedRoundData = null;
     let isFetchingRound = false;
 
     const sunIcon = '☀️';
@@ -98,6 +97,7 @@ document.addEventListener('DOMContentLoaded', () => {
        baseCountryEl.textContent = currentBaseCountryName;
        choice1Button.dataset.country = currentTarget1Name;
        choice1Label.textContent = currentTarget1Name;
+       currentScoreEl.textContent = data.score;
        if (data.target1.code) {
            choice1Img.src = getStaticPath(`svg/${data.target1.code.toLowerCase()}.svg`);
            choice1Img.alt = `Flag of ${currentTarget1Name}`;
@@ -113,88 +113,65 @@ document.addEventListener('DOMContentLoaded', () => {
            choice2Img.onerror = () => { choice2Img.style.display = 'none'; choice2Label.textContent = `${currentTarget2Name} (?)`;};
            choice2Img.style.display = 'inline-block';
        } else { choice2Img.src = ''; choice2Img.style.display = 'none'; }
-
-       currentScoreEl.textContent = data.score;
-       highScoreEl.textContent = data.highscore;
    }
 
-    async function prefetchNextRound() {
-        try {
-            // Fetch data but don't update UI yet
-            const response = await fetch('start_round');
-            if (!response.ok) {
-                console.error(`Prefetch HTTP error! status: ${response.status}`);
-                prefetchedRoundData = null; // Ensure fallback fetch happens
-                return;
+    function prefetchSvgs(codes) {
+        if (!Array.isArray(codes)) return;
+        console.log("Prefetching SVGs for codes:", codes); // DEBUG
+        codes.forEach(code => {
+            if (code && typeof code === 'string') {
+                try {
+                    const img = new Image();
+                    img.src = getStaticPath(`svg/${code.toLowerCase()}.svg`);
+                } catch (svgError) {
+                    console.error(`Error initiating SVG prefetch for code ${code}:`, svgError);
+                }
             }
-            const data = await response.json();
-            if (data.error || data.game_over) {
-                console.error("Prefetch failed with error/game over:", data.error || data.message);
-                prefetchedRoundData = null; // Ensure fallback fetch happens
-                return;
-            }
-            prefetchedRoundData = data; // Store successful prefetch
-        } catch (error) {
-            console.error('Error during prefetch:', error);
-            prefetchedRoundData = null; // Clear on any error
-        }
+        });
     }
 
-
-    // Fetches data for a new round from the backend
     async function fetchNewRound() {
-        if (isFetchingRound) return; // Prevent simultaneous fetches
+        if (isFetchingRound) return;
         isFetchingRound = true;
-
-        if(feedbackBoxEl.className == 'incorrect') {
+    
+        if(feedbackBoxEl.className == 'incorrect' || feedbackBoxEl.className == 'correct') { // Hide feedback on new round
             feedbackBoxEl.style.display = 'none';
             feedbackTextEl.textContent = '';
-            feedbackBoxEl.className = ''; // Remove correct/incorrect classes
+            feedbackBoxEl.className = '';
         }
-
-        leaderboardSection.style.display = 'none'; 
+        // ... (rest of UI cleanup: leaderboard, nickname, map) ...
+        leaderboardSection.style.display = 'none';
         nicknameArea.style.display = 'none';
-        leafletMapContainer.style.display = 'none'; 
-        leafletMapContainer.innerHTML = ''; // Clear old map content
+        leafletMapContainer.style.display = 'none';
+        leafletMapContainer.innerHTML = '';
         if (map) { map.remove(); map = null; }
         showMapLink.style.display = 'none';
-
         gameOverEl.style.display = 'none';
         gameAreaEl.style.display = 'block';
-        setLoadingState(true); // Disable buttons
-
-        if (prefetchedRoundData) {
-            const dataToDisplay = prefetchedRoundData;
-            prefetchedRoundData = null; // Consume the prefetched data
-            try {
-                displayRoundData(dataToDisplay); // Update UI with stored data
-                prefetchNextRound(); // START PREFETCHING AGAIN
-            } catch(e){
-                isFetchingRound = false; // Reset flag before potential recursive call
-                await fetchNewRound(); // Try fetching normally
-                return;
-            } finally {
-                setLoadingState(false);     // Hide loading state
-                isFetchingRound = false;    // Allow next fetch
-            }
-            return; // Skip the fetch call
-        }
-
+        setLoadingState(true);
+    
         try {
-            const response = await fetch('start_round');
+            const response = await fetch('start_round'); // Always fetch
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             const data = await response.json();
 
             if (data.error || data.game_over) {
+                console.error("Error/Game Over received during fetch:", data.error || data.message);
                 feedbackTextEl.textContent = data?.error || data?.message || 'Failed to start round.';
-                feedbackBoxEl.className = 'incorrect';
+                feedbackBoxEl.className = 'incorrect'; // Use incorrect style for errors/game over message
                 feedbackBoxEl.style.display = 'block';
                 gameAreaEl.style.display = 'none';
-                gameOverEl.style.display = 'block'; // Show game over if applicable
+                gameOverEl.style.display = 'block';
                 handleGameOver(data); // Process game over data
             } else {
+                console.log("Fetch successful, displaying data for:", data.base_country.name); // DEBUG
                 displayRoundData(data);
-                prefetchNextRound();
+                const codesToPrefetch = [
+                    data.next_target1_code, // Use the specific codes for next choices
+                    data.next_target2_code,
+                    data.base_country?.code // Prefetch current base flag too as it's shown now
+                ].filter(Boolean); // Filter out any null/undefined codes
+                prefetchSvgs(codesToPrefetch);
             }
         } catch (error) {
             console.error('Error fetching new round:', error);
@@ -203,16 +180,16 @@ document.addEventListener('DOMContentLoaded', () => {
             feedbackBoxEl.style.display = 'block';
             gameAreaEl.style.display = 'none';
         } finally {
-            setLoadingState(false); // Re-enable buttons
-            isFetchingRound = false; // Allow next fetch/prefetch
+            setLoadingState(false);
+            isFetchingRound = false;
         }
     }
 
     // Sends the player's guess to the backend
     async function makeGuess(chosenCountryName) {
+        if (isFetchingRound) { console.log("Guess skipped: round is loading."); return; }
         const otherCountryName = (chosenCountryName === currentTarget1Name) ? currentTarget2Name : currentTarget1Name;
         setLoadingState(true); // Disable buttons while checking
-        prefetchedRoundData = null;
 
         try {
             const response = await fetch('make_guess', {
@@ -246,7 +223,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     feedbackPrefix += "\n✨ New High Score! ✨";
                 }
 
-                prefetchNextRound();
                 const finalFeedbackText = `${feedbackPrefix}\n${distString1}\n${distString2}`;
                 feedbackTextEl.textContent = finalFeedbackText;
                 feedbackBoxEl.className = feedbackClass;

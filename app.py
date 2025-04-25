@@ -312,35 +312,139 @@ def start_round():
     ensure_user_id()
     user_id = session['user_id']
     user_highscore = session.get('user_highscore', get_user_highscore(user_id))
+    current_score = session.get('score', 0)
+
+    global country_list, country_code_map
+    if session.get('round_in_progress', False) and \
+       'served_base_name' in session and \
+       'served_target1_name' in session and \
+       'served_target2_name' in session:
+
+        base_name = session['served_base_name']
+        t1_name = session['served_target1_name']
+        t2_name = session['served_target2_name']
+
+        base_code = country_code_map.get(base_name)
+        t1_code = country_code_map.get(t1_name)
+        t2_code = country_code_map.get(t2_name)
+        next_t1_code = session.get('served_next_t1_code')
+        next_t2_code = session.get('served_next_t2_code')
+
+        if not all([base_code, t1_code, t2_code]):
+            app.logger.error("Failed to re-serve round: Missing codes for stored countries.")
+            session['round_in_progress'] = False
+        else:
+            return jsonify({
+                'base_country': {'name': base_name, 'code': base_code },
+                'target1': {'name': t1_name, 'code': t1_code},
+                'target2': {'name': t2_name, 'code': t2_code},
+                'score': current_score,
+                'highscore': user_highscore,
+                'next_target1_code': next_t1_code,
+                'next_target2_code': next_t2_code,
+            })
 
     if 'score' not in session:
         session['score'] = 0
+        current_score = 0
         app.logger.debug(f"GET /start_round: Score missing, reset to 0 for user {user_id}")
 
-    global country_list, country_code_map
-    if not country_list or not country_code_map: return jsonify({'error': 'Game data not fully loaded'}), 500
-    valid_start_countries = [c for c in country_list if c in country_code_map]
-    if not valid_start_countries: return jsonify({'error': 'No countries with codes found'}), 500
-    if 'score' not in session or not session.get('base_country') or session['base_country'] not in country_code_map:
-        session['score'] = 0
-        session['base_country'] = random.choice(valid_start_countries)
+    if not country_list or not country_code_map:
+        return jsonify({'error': 'Game data not fully loaded'}), 500
 
-    base_country_name = session['base_country']
-    score = session['score']
+    current_base_name = None
+    current_target1_name = None
+    current_target2_name = None
+    used_prefetched = False
+
+    if 'next_round_base' in session and 'next_round_t1' in session and 'next_round_t2' in session:
+        potential_base = session['next_round_base']
+        potential_t1 = session['next_round_t1']
+        potential_t2 = session['next_round_t2']
+        if potential_base in country_code_map and potential_t1 in country_code_map and potential_t2 in country_code_map and \
+           potential_t1 != potential_base and potential_t2 != potential_base and potential_t1 != potential_t2:
+            current_base_name = potential_base
+            current_target1_name = potential_t1
+            current_target2_name = potential_t2
+            used_prefetched = True
+            app.logger.debug(f"Using prefetched round data: Base={current_base_name}, T1={current_target1_name}, T2={current_target2_name}")
+        else:
+            app.logger.warning("Invalid prefetched round data found, generating fresh.")
+        session.pop('next_round_base', None); session.pop('next_round_t1', None); session.pop('next_round_t2', None)
+
+    if not used_prefetched:
+        app.logger.debug("Generating fresh round data.")
+        valid_start_countries = [c for c in country_list if c in country_code_map]
+        if not valid_start_countries:
+            return jsonify({'error': 'No countries with codes found'}), 500
+
+        if 'base_country' in session and session['base_country'] in country_code_map:
+            current_base_name = session['base_country'] # Could be resuming after error/mismatch
+            app.logger.debug(f"Generating fresh round using existing base_country from session: {current_base_name}")
+        else:
+            current_base_name = random.choice(valid_start_countries)
+            app.logger.debug(f"Starting new game sequence, random base: {current_base_name}")
+
+        possible_targets = [c for c in country_list if c != current_base_name and c in country_code_map]
+        if len(possible_targets) < 2:
+            session.pop('score', None); session.pop('base_country', None); session.pop('round_in_progress', None) # Clear state
+            session.modified = True
+            return jsonify({'game_over': True, 'message': 'Not enough valid countries with flags!'}), 200
+        current_target1_name, current_target2_name = random.sample(possible_targets, 2)
+
+    current_base_code = country_code_map.get(current_base_name)
+    current_target1_code = country_code_map.get(current_target1_name)
+    current_target2_code = country_code_map.get(current_target2_name)
+
+    if not all([current_base_code, current_target1_code, current_target2_code]):
+        app.logger.error(f"CODE LOOKUP FAILED for current round")
+        session.pop('score', None); session.pop('base_country', None); session.pop('round_in_progress', None)
+        session.modified = True
+        return jsonify({'error': 'Internal error: Could not find codes for current round countries.'}), 500
+
+    session['base_country'] = current_base_name # Needed for make_guess validation
     session['user_highscore'] = user_highscore
-    session.modified = True 
 
-    possible_targets = [c for c in country_list if c != base_country_name and c in country_code_map]
-    if len(possible_targets) < 2: return jsonify({'game_over': True, 'message': 'Not enough valid countries with flags!'}), 200
-    target1_name, target2_name = random.sample(possible_targets, 2)
-    target1_code, target2_code, base_code = country_code_map.get(target1_name), country_code_map.get(target2_name), country_code_map.get(base_country_name)
-    if not target1_code or not target2_code or not base_code: return jsonify({'error': 'Internal data inconsistency (codes)'}), 500
+    next_round_base_name = None; next_round_t1_name = None; next_round_t2_name = None
+    next_round_t1_code = None; next_round_t2_code = None
+    dist_1 = get_distance(current_base_name, current_target1_name)
+    dist_2 = get_distance(current_base_name, current_target2_name)
+
+    if dist_1 is not None and dist_2 is not None:
+        potential_next_base = current_target1_name if dist_1 <= dist_2 else current_target2_name
+        possible_next_targets = [c for c in country_list if c != potential_next_base and c in country_code_map]
+        if len(possible_next_targets) >= 2:
+            next_round_base_name = potential_next_base
+            next_round_t1_name, next_round_t2_name = random.sample(possible_next_targets, 2)
+            next_round_t1_code = country_code_map.get(next_round_t1_name)
+            next_round_t2_code = country_code_map.get(next_round_t2_name)
+            if next_round_t1_code and next_round_t2_code:
+                session['next_round_base'] = next_round_base_name
+                session['next_round_t1'] = next_round_t1_name
+                session['next_round_t2'] = next_round_t2_name
+            else:
+                app.logger.warning(f"Could not find codes for next round targets, prefetch data not stored.")
+                next_round_t1_code = None; next_round_t2_code = None
+        else: app.logger.info("Not enough countries for next round prefetch.")
+    else: app.logger.error(f"Missing distance for current round pairs, cannot determine next base.")
+
+    session['served_base_name'] = current_base_name
+    session['served_target1_name'] = current_target1_name
+    session['served_target2_name'] = current_target2_name
+    session['served_next_t1_code'] = next_round_t1_code
+    session['served_next_t2_code'] = next_round_t2_code
+    session['round_in_progress'] = True
+    app.logger.debug(f"Serving round: Base={current_base_name}, T1={current_target1_name}, T2={current_target2_name}. Flag set.")
+
+    session.modified = True
     return jsonify({
-        'base_country': {'name': base_country_name, 'code': base_code },
-        'target1': {'name': target1_name, 'code': target1_code},
-        'target2': {'name': target2_name, 'code': target2_code},
-        'score': score,
+        'base_country': {'name': current_base_name, 'code': current_base_code },
+        'target1': {'name': current_target1_name, 'code': current_target1_code},
+        'target2': {'name': current_target2_name, 'code': current_target2_code},
+        'score': current_score,
         'highscore': user_highscore,
+        'next_target1_code': next_round_t1_code,
+        'next_target2_code': next_round_t2_code,
     })
 
 @app.route('/make_guess', methods=['POST'])
@@ -348,23 +452,44 @@ def make_guess():
     ensure_user_id()
     user_id = session['user_id']
     current_user_highscore = get_user_highscore(user_id)
-    session['user_highscore'] = current_user_highscore
 
     global distances_data
     if distances_data is None: return jsonify({'error': 'Distance data not loaded'}), 500
     data = request.get_json()
-    if not data or 'base_country_name' not in data or 'chosen_country_name' not in data or 'other_country_name' not in data: return jsonify({'error': 'Missing name data in guess request'}), 400
+    if not data or 'base_country_name' not in data or 'chosen_country_name' not in data or 'other_country_name' not in data: 
+        return jsonify({'error': 'Missing name data in guess request'}), 400
     base_c, chosen_c, other_c = data['base_country_name'], data['chosen_country_name'], data['other_country_name']
+
+    expected_base = session.get('base_country') # This was set by the /start_round that served the round
+    if not expected_base or base_c != expected_base:
+        app.logger.warning(f"Guess received for base '{base_c}' but expected '{expected_base}' in session.")
+        session.pop('score', None)
+        session.pop('base_country', None)
+        session.pop('next_round_base', None); session.pop('next_round_t1', None); session.pop('next_round_t2', None)
+        session.pop('served_base_name', None); session.pop('served_target1_name', None); session.pop('served_target2_name', None)
+        session.pop('served_next_t1_code', None); session.pop('served_next_t2_code', None)
+        session.pop('round_in_progress', None)
+        session.modified = True
+        return jsonify({'error': 'Round data mismatch. Please start again.', 'correct': False, 'game_over': True, 'final_score': session.get('score', 0)}), 400
+
+    session.pop('round_in_progress', None)
+    session.pop('served_base_name', None); session.pop('served_target1_name', None); session.pop('served_target2_name', None)
+    session.pop('served_next_t1_code', None); session.pop('served_next_t2_code', None)
+    app.logger.debug("Cleared anti-refresh flag for served round.")
+
     dist_chosen, dist_other = get_distance(base_c, chosen_c), get_distance(base_c, other_c)
     if dist_chosen is None or dist_other is None: return jsonify({'error': f'Internal error: Missing distance data for {base_c}.'}), 500
-    is_correct = (dist_chosen <= dist_other)
-    closer_country = chosen_c if is_correct else other_c
-    response_data = {'correct': is_correct, 'chosen_dist': round(dist_chosen, 1), 'other_dist': round(dist_other, 1), 'closer_country': closer_country}
-    current_score = session.get('score', 0) 
-    if is_correct:
+
+    is_correct_distance = (dist_chosen <= dist_other)
+    closer_country = chosen_c if is_correct_distance else other_c
+    is_correct_guess = (is_correct_distance and chosen_c == closer_country)
+
+    response_data = {'correct': is_correct_guess, 'chosen_dist': round(dist_chosen, 1), 'other_dist': round(dist_other, 1), 'closer_country': closer_country}
+    current_score = session.get('score', 0)
+
+    if is_correct_guess:
         current_score += 1
         session['score'] = current_score
-        session['base_country'] = chosen_c
         response_data['score'] = current_score
 
         if current_score > current_user_highscore:
@@ -372,32 +497,33 @@ def make_guess():
             update_user_highscore(user_id, current_score)
             session['user_highscore'] = current_score
             response_data['new_highscore'] = True
+        else:
+            response_data['new_highscore'] = False
+        response_data['highscore'] = session.get('user_highscore', current_user_highscore)
 
-        response_data['highscore'] = session['user_highscore']
-        session.modified = True
-    else:
+    else: # Incorrect Guess
         final_score = current_score
         response_data['game_over'] = True
         response_data['final_score'] = final_score
-        response_data['highscore'] = current_user_highscore
+        response_data['highscore'] = current_user_highscore # Highscore before this game
         response_data['map_available'] = True
         response_data['map_params'] = {'base': base_c, 't1': chosen_c, 't2': other_c}
 
-        # Check if final score is a new high score for this user
         if final_score > 0 and final_score >= current_user_highscore:
-             # >= ensures if they match their high score, they can still enter name
             response_data['prompt_nickname'] = True
             existing_nickname = get_user_nickname(user_id)
-            response_data['existing_nickname'] = existing_nickname 
-            app.logger.debug(f"Game over for user {user_id}. Final score {final_score} is a new/matching high score. Prompting for nickname.")
+            response_data['existing_nickname'] = existing_nickname
         else:
             response_data['prompt_nickname'] = False
-            app.logger.debug(f"Game over for user {user_id}. Final score {final_score} is not a new high score ({current_user_highscore}).")
 
-        session.pop('score', None) # Remove score to trigger reset in /start_round
+        session.pop('score', None)
         session.pop('base_country', None)
+        session.pop('next_round_base', None)
+        session.pop('next_round_t1', None)
+        session.pop('next_round_t2', None)
         session['last_final_score'] = final_score
-        session.modified = True
+
+    session.modified = True
     return jsonify(response_data)
 
 @app.route('/get_game_over_data')
