@@ -132,12 +132,6 @@ document.addEventListener('DOMContentLoaded', () => {
     async function fetchNewRound() {
         if (isFetchingRound) return;
         isFetchingRound = true;
-    
-        if(feedbackBoxEl.className == 'incorrect' || feedbackBoxEl.className == 'correct') { // Hide feedback on new round
-            feedbackBoxEl.style.display = 'none';
-            feedbackTextEl.textContent = '';
-            feedbackBoxEl.className = '';
-        }
         leaderboardSection.style.display = 'none';
         nicknameArea.style.display = 'none';
         leafletMapContainer.style.display = 'none';
@@ -449,7 +443,7 @@ document.addEventListener('DOMContentLoaded', () => {
     choice1Button.addEventListener('click', () => makeGuess(choice1Button.dataset.country));
     choice2Button.addEventListener('click', () => makeGuess(choice2Button.dataset.country));
     showMapLink.addEventListener('click', (e) => { e.preventDefault(); fetchAndShowMap(); });
-    playAgainButton.addEventListener('click', () => { fetchNewRound(); });
+    playAgainButton.addEventListener('click', () => { fetchNewRound(); feedbackBoxEl.style.display = 'none'; });
 
     fetchNewRound();
 });
